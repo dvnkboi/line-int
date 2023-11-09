@@ -1,0 +1,38 @@
+#stage1
+FROM node:alpine as build-step
+RUN mkdir -p /app
+RUN npm cache clear --force
+WORKDIR /app
+COPY ./LI-file-management-front/package.json /app
+RUN npm install
+COPY ./LI-file-management-front /app
+COPY ./LI-file-management-front/docker.env /app/.env
+RUN npm run build
+# CMD ["yarn", "preview"]
+
+
+FROM joseluisq/static-web-server:2-alpine
+
+RUN apk update && apk --no-cache add curl
+
+WORKDIR /etc/sws
+COPY ./docker/services/sws /etc/sws
+COPY --from=build-step /app/dist /app
+
+EXPOSE 80
+
+STOPSIGNAL SIGQUIT
+
+CMD ["-w", "/etc/sws/config.toml"]
+
+# #stage2
+# FROM nginx
+# COPY  ./docker/services/nginx /etc/nginx/conf.d/
+# RUN rm -rf /usr/share/nginx/html/*
+# COPY --from=build-step /app/dist /usr/share/nginx/html
+
+# EXPOSE 80
+
+# STOPSIGNAL SIGTERM
+
+# CMD ["nginx", "-g", "daemon off;"]

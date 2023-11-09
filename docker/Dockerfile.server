@@ -1,0 +1,20 @@
+FROM --platform=linux/amd64 node:18.10-alpine3.15 
+
+# health checks
+RUN apk update && apk --no-cache add curl g++ gcc libgcc libstdc++ linux-headers make python3
+
+WORKDIR /app
+
+COPY ./line-international/package.json package.json
+
+RUN CXXFLAGS="--std=c++17" npm i 
+
+COPY ./line-international .
+
+COPY ./line-international/docker.env .env
+
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

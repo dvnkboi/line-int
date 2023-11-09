@@ -27,28 +27,9 @@ export type FilterArr = ('type:image' | 'type:data' | 'type:pdf' | 'type:video' 
 
 const host = import.meta.env.VITE_SERVER_HOST;
 
-const getHeaders = (): Promise<Headers> => {
-  const headers = new Headers();
-  headers.append('Content-Type', 'application/json');
-  headers.append('Accept', 'application/json');
-  return new Promise((res) => {
-    const req = new XMLHttpRequest();
-    req.open('GET', document.location.toString(), true);
-    req.send(null);
-    req.onload = function () {
-      const headerString = req.getAllResponseHeaders().toLowerCase();
-      const authHeader = headerString.match(/[aA]uthorization: (.*)/);
-      const auth = authHeader ? authHeader[1] : '';
-      headers.append('Authorization', auth);
-      res(headers);
-    };
-  });
-};
-
 
 
 export const getFiles = async (dir: string = '/'): Promise<FileArrayResponse> => {
-  const headers = await getHeaders();
   if (!dir) dir = '/';
 
   if (dir.charAt(0) === '/') {
@@ -57,7 +38,6 @@ export const getFiles = async (dir: string = '/'): Promise<FileArrayResponse> =>
 
   const response = await fetch(`${host}/api/files/directory/${dir}`, {
     credentials: 'include',
-    headers,
   });
 
   const data = await response.json();
@@ -66,7 +46,6 @@ export const getFiles = async (dir: string = '/'): Promise<FileArrayResponse> =>
 };
 
 export const searchFiles = async (query: string, filters: FilterArr): Promise<SearchResponse> => {
-  const headers = await getHeaders();
   if (query.charAt(0) === '/') {
     query = query.substring(1);
   }
@@ -81,7 +60,6 @@ export const searchFiles = async (query: string, filters: FilterArr): Promise<Se
 
   const response = await fetch(`${host}/api/files/search/${query}${filterString}`, {
     credentials: 'include',
-    headers,
   });
 
   const data = await response.json();
@@ -99,7 +77,6 @@ export const getFile = async (filePath: string): Promise<void> => {
 };
 
 export const getFilePreview = async (filePath: string): Promise<FilePreviewType> => {
-  const headers = await getHeaders();
 
   if (filePath.charAt(0) === '/') {
     filePath = filePath.substring(1);
@@ -107,7 +84,6 @@ export const getFilePreview = async (filePath: string): Promise<FilePreviewType>
 
   const response = await fetch(`${host}/api/files/preview/${filePath}`, {
     credentials: 'include',
-    headers,
   });
 
   const type = getContentType(response);
@@ -151,7 +127,6 @@ const getContentType = (response: Response) => {
 };
 
 export const createFolder = async (folderPath: string): Promise<FileArrayResponse['files'][number]> => {
-  const headers = await getHeaders();
 
   if (folderPath.charAt(0) === '/') {
     folderPath = folderPath.substring(1);
@@ -160,7 +135,6 @@ export const createFolder = async (folderPath: string): Promise<FileArrayRespons
   const response = await fetch(`${host}/api/files/directory/${folderPath}`, {
     credentials: 'include',
     method: 'POST',
-    headers,
   });
 
   const data = await response.json();
@@ -169,7 +143,6 @@ export const createFolder = async (folderPath: string): Promise<FileArrayRespons
 };
 
 export const deleteFolder = async (folderPath: string): Promise<FileArrayResponse['files'][number]> => {
-  const headers = await getHeaders();
 
   if (folderPath.charAt(0) === '/') {
     folderPath = folderPath.substring(1);
@@ -178,7 +151,6 @@ export const deleteFolder = async (folderPath: string): Promise<FileArrayRespons
   const response = await fetch(`${host}/api/files/directory/${folderPath}`, {
     credentials: 'include',
     method: 'DELETE',
-    headers,
   });
 
   const data = await response.json();
@@ -188,7 +160,6 @@ export const deleteFolder = async (folderPath: string): Promise<FileArrayRespons
 
 
 export const deleteFile = async (filePath: string): Promise<FileArrayResponse['files'][number]> => {
-  const headers = await getHeaders();
 
   if (filePath.charAt(0) === '/') {
     filePath = filePath.substring(1);
@@ -197,7 +168,6 @@ export const deleteFile = async (filePath: string): Promise<FileArrayResponse['f
   const response = await fetch(`${host}/api/files/file/${filePath}`, {
     credentials: 'include',
     method: 'DELETE',
-    headers,
   });
 
   const data = await response.json();
@@ -206,7 +176,6 @@ export const deleteFile = async (filePath: string): Promise<FileArrayResponse['f
 };
 
 export const uploadFiles = async (path: string, files: FileList, progress: (progress: number) => void = () => { }) => {
-  const headers = await getHeaders();
   var formdata = new FormData();
 
   for (let i = 0; i < files.length; i++) {
@@ -221,7 +190,6 @@ export const uploadFiles = async (path: string, files: FileList, progress: (prog
     credentials: 'include',
     method: 'POST',
     body: formdata,
-    headers,
   });
 
   const data = await response.json();

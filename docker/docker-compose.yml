@@ -22,7 +22,6 @@ services:
       - traefik.http.services.api.loadbalancer.server.port=80
       - "traefik.http.routers.api.entrypoints=https"
       - "traefik.http.middlewares.authentication_api.basicauth.usersfile=/etc/traefik/basicAuth/users"
-      - "traefik.http.middlewares.authentication_api.basicauth.headerField=Authorization"
       - "traefik.http.middlewares.compressor_api.compress=true"
       - "traefik.http.middlewares.ratelimiter_api.ratelimit.average=100"
       - "traefik.http.middlewares.ratelimiter_api.ratelimit.burst=50"
@@ -32,7 +31,7 @@ services:
       - "traefik.http.middlewares.cors_api.headers.accesscontrolmaxage=100"
       - "traefik.http.middlewares.cors_api.headers.addvaryheader=true"
       - "traefik.http.middlewares.cors_api.headers.accesscontrolallowcredentials=true"
-      - "traefik.http.middlewares.cors_api.headers.accessControlAllowHeaders=Origin,Accept,Content-Type,Authorization,X-Requested-With,Authorization"
+      - "traefik.http.middlewares.cors_api.headers.accessControlAllowHeaders=Origin,Accept,Content-Type,Authorization,X-Requested-With"
       - "traefik.http.routers.api.middlewares=ratelimiter_api,cors_api,authentication_api,compressor_api"
     healthcheck:
       test: "curl --fail --silent localhost/api/health | grep OK || exit 1"
@@ -52,13 +51,12 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.web.tls=true
-      - traefik.http.routers.api.tls.certresolver=letsencrypt
+      - traefik.http.routers.web.tls.certresolver=letsencrypt
       - traefik.http.routers.web.service=web
       - traefik.http.routers.web.rule=Host("app.line-international.com")
       - traefik.http.services.web.loadbalancer.server.port=80
       - "traefik.http.routers.web.entrypoints=https"
       - "traefik.http.middlewares.authentication_web.basicauth.usersfile=/etc/traefik/basicAuth/users"
-      - "traefik.http.middlewares.authentication_web.basicauth.headerField=Authorization"
       - "traefik.http.middlewares.compressor_web.compress=true"
       - "traefik.http.middlewares.ratelimiter_web.ratelimit.average=100"
       - "traefik.http.middlewares.ratelimiter_web.ratelimit.burst=50"
@@ -68,7 +66,7 @@ services:
       - "traefik.http.middlewares.cors_web.headers.accesscontrolmaxage=100"
       - "traefik.http.middlewares.cors_web.headers.addvaryheader=true"
       - "traefik.http.middlewares.cors_web.headers.accesscontrolallowcredentials=true"
-      - "traefik.http.middlewares.cors_web.headers.accessControlAllowHeaders=Origin,Accept,Content-Type,Authorization,X-Requested-With,Authorization"
+      - "traefik.http.middlewares.cors_web.headers.accessControlAllowHeaders=Origin,Accept,Content-Type,Authorization,X-Requested-With"
       - "traefik.http.routers.web.middlewares=ratelimiter_web,cors_web,compressor_web"
     healthcheck:
       test: "curl --fail --silent localhost:80/health | grep OK || exit 1"

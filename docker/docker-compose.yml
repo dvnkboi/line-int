@@ -24,7 +24,7 @@ services:
       - "traefik.http.services.api.loadbalancer.server.port=80"
       - "traefik.http.routers.api.entrypoints=https"
       - "traefik.http.middlewares.authentication_api.basicauth.usersfile=/etc/traefik/basicAuth/users"
-      - "traefik.http.middlewares.authentication_web.basicauth.headerField=Authorization"
+      - "traefik.http.middlewares.authentication_api.basicauth.headerField=Authorization"
       - "traefik.http.middlewares.compressor_api.compress=true"
       - "traefik.http.middlewares.ratelimiter_api.ratelimit.average=100"
       - "traefik.http.middlewares.ratelimiter_api.ratelimit.burst=50"

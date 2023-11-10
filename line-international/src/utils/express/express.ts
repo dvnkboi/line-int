@@ -209,8 +209,9 @@ function extractParameters(req, res, next, params: ParameterConfiguration[] = []
                 break;
             case ParameterType.AUTH:
                 const authHeader = getParam(req, 'headers', 'authorization');
+                //Basic dGVzdDpwYXNzd29yZA==
                 if (name == 'basic') {
-                    const auth = authHeader as string ?? 'Basic ';
+                    const auth = Buffer.from(authHeader as string ?? 'Basic ', 'base64').toString('ascii');
                     const [username, password] = auth.split(' ')[1].split(':');
                     args[index] = !password ? null : {
                         username,
@@ -218,7 +219,7 @@ function extractParameters(req, res, next, params: ParameterConfiguration[] = []
                     };
                 }
                 if (name == 'bearer') {
-                    const auth = authHeader as string ?? 'Bearer ';
+                    const auth = Buffer.from(authHeader as string ?? 'Basic ', 'base64').toString('ascii');
                     const token = auth.split(' ')[1];
                     if (token.length < 1) args[index] = token;
                     args[index] = null;

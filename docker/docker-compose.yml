@@ -94,7 +94,7 @@ services:
       - ./services/router/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./services/router/config.yml:/etc/traefik/config.yml:ro
       - ./services/router/basicAuth/users:/etc/traefik/basicAuth/users:ro
-      - ./services/router/certs:/etc/certs:ro
+      - ./services/router/certs:/etc/certs:rw
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
       - traefik-net

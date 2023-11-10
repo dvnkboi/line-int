@@ -36,6 +36,7 @@ certificatesResolvers:
   letsencrypt:
     acme:
       email: 'aymandb@outlook.com'
-      storage: 'acme.json'
+      storage: '/etc/certs/acme.json'
       httpChallenge:
         entryPoint: http
+      caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'

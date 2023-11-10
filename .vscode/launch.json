@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": [
+        "dev"
+      ],
+      "localRoot": "${workspaceRoot}/line-international",
+      "presentation": {
+        "hidden": false,
+        "group": "dev",
+        "order": 1
+      },
+      "console": "integratedTerminal",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+    }
+  ]
+}

@@ -1,9 +1,9 @@
 global:
-  sendAnonymousUsage: false
+  sendAnonymousUsage: true
 
 api:
-  dashboard: false
-  insecure: false
+  dashboard: true
+  insecure: true
 
 providers:
   docker:

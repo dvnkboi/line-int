@@ -13,9 +13,15 @@ type Client = {
 
 @Stream('/events')
 export class EventStream {
+
+  constructor () {
+    State.set('operationBacklog', []);
+  }
+
   @Get('/audit')
   async get(@Queue() queue: QueueType<any>, @Res() res: Response) {
-    const operationBacklog: Client[] = await State.get('operationBacklog') ?? [];
+    const operationBacklogRaw: Client[] = await State.get('operationBacklog') ?? [];
+    const operationBacklog: Client[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
 
     const authHeader = res.getHeader('authorization') as string ?? 'Basic unknown:'; // Basic username:password (hashed)
     const username = authHeader.split(' ')[1].split(':')[0];
@@ -25,8 +31,10 @@ export class EventStream {
     for (const operation of operationBacklog) {
       queue.push(operation);
     }
+
     globalEvents.on(`audit`, async (user: string, operation: string, operationType: Client['operationType']) => {
-      const operationBacklog: Client[] = await State.get('operationBacklog') ?? [];
+      const operationBacklogRaw: Client[] = await State.get('operationBacklog') ?? [];
+      const operationBacklog: Client[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
       const clientOperation: Client = {
         username: user,
         currentOperation: operation,
@@ -37,7 +45,7 @@ export class EventStream {
       await State.set('operationBacklog', operationBacklog);
     }, eventId, true);
 
-    res.on('close', () => {
+    res.once('close', () => {
       globalEvents.off('test', eventId);
     });
 

@@ -337,6 +337,10 @@ const createFolderHandler = async () => {
   folderCreationModal.unfocus();
 
   const folder = await createFolder(join(currentPath.value, folderName.value));
+  if (Exception.isException(folder)) {
+    alert(folder.errorMessage);
+    return;
+  }
   const exists = discoveredFolders.value.find(folder => folder.filePath == join(currentPath.value, folderName.value));
   if (exists != null) return;
   discoveredFolders.value.push(folder);
@@ -344,11 +348,19 @@ const createFolderHandler = async () => {
 
 const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => {
   if (type == 'folder') {
-    await deleteFolder(path);
+    const deleteResp = await deleteFolder(path);
+    if (Exception.isException(deleteResp)) {
+      alert(deleteResp.errorMessage);
+      return;
+    }
     discoveredFolders.value = discoveredFolders.value.filter(folder => folder.filePath != path);
   }
   else {
-    await deleteFile(path);
+    const deleteResp = await deleteFile(path);
+    if (Exception.isException(deleteResp)) {
+      alert(deleteResp.errorMessage);
+      return;
+    }
     files.value = files.value.filter(file => file.filePath != path);
 
   }
@@ -361,7 +373,11 @@ const showDeleteConfirmation = (path: string, type: 'folder' | 'file' = 'file') 
 };
 
 const fileUploadHandler = async () => {
-  await uploadFiles(currentPath.value, fileInput.value.files);
+  const resp = await uploadFiles(currentPath.value, fileInput.value.files);
+  if (Exception.isException(resp)) {
+    alert(resp.errorMessage);
+    return;
+  }
   await listFiles(currentPath.value);
 };
 

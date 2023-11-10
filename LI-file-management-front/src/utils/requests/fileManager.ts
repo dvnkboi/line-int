@@ -1,3 +1,5 @@
+import { Exception } from "../error";
+
 export type FileArrayResponse = {
   files: Array<{
     fileName: string;
@@ -126,7 +128,7 @@ const getContentType = (response: Response) => {
   }
 };
 
-export const createFolder = async (folderPath: string): Promise<FileArrayResponse['files'][number]> => {
+export const createFolder = async (folderPath: string): Promise<FileArrayResponse['files'][number] | Exception<any>> => {
 
   if (folderPath.charAt(0) === '/') {
     folderPath = folderPath.substring(1);
@@ -142,7 +144,7 @@ export const createFolder = async (folderPath: string): Promise<FileArrayRespons
   return data;
 };
 
-export const deleteFolder = async (folderPath: string): Promise<FileArrayResponse['files'][number]> => {
+export const deleteFolder = async (folderPath: string): Promise<FileArrayResponse['files'][number] | Exception<any>> => {
 
   if (folderPath.charAt(0) === '/') {
     folderPath = folderPath.substring(1);
@@ -159,7 +161,7 @@ export const deleteFolder = async (folderPath: string): Promise<FileArrayRespons
 };
 
 
-export const deleteFile = async (filePath: string): Promise<FileArrayResponse['files'][number]> => {
+export const deleteFile = async (filePath: string): Promise<FileArrayResponse['files'][number] | Exception<any>> => {
 
   if (filePath.charAt(0) === '/') {
     filePath = filePath.substring(1);
@@ -175,7 +177,7 @@ export const deleteFile = async (filePath: string): Promise<FileArrayResponse['f
   return data;
 };
 
-export const uploadFiles = async (path: string, files: FileList, progress: (progress: number) => void = () => { }) => {
+export const uploadFiles = async (path: string, files: FileList, progress: (progress: number) => void = () => { }): Promise<any | Exception<any>> => {
   var formdata = new FormData();
 
   for (let i = 0; i < files.length; i++) {

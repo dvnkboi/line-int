@@ -63,6 +63,7 @@ export class Subscriber {
       headers: {
         Accept: "text/event-stream",
       },
+      openWhenHidden: true,
       onopen: async (res) => {
         if (res.ok && res.status === 200) {
         } else if (

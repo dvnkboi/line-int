@@ -15,7 +15,7 @@ export interface NativeObject {
   nextKey(key?: string): IterableIterator<string>;
 }
 
-// a more optimised version of map
+
 export class Hash<K extends string = string> implements NativeObject {
   private readonly data: Map<K, any> = new Map();
   private currKey: K | undefined = undefined;

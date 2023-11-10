@@ -56,33 +56,38 @@ export class FileController {
   // DIRECTORY OPERATIONS
 
   @Post('/directory/:folderName(*)')
-  public async createFolder(@Params('folderName') folderName: string, @Auth('basic') basicAuth: BasicAuth): Promise<DiscoveredFile> {
-    if (!basicAuth) return;
+  public async createFolder(@Params('folderName') folderName: string, @Auth('basic') basicAuth: BasicAuth) {
+    try {
+      if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
-    await $mkdir($join(fileRootDir, folderName));
+      await $mkdir($join(fileRootDir, folderName));
 
-    const depth = calculateFolderDepth(folderName);
+      const depth = calculateFolderDepth(folderName);
 
-    Index.add({
-      fileName: folderName.split('/').pop() as string,
-      filePath: folderName,
-      isDirectory: true,
-      depth: depth
-    });
+      Index.add({
+        fileName: folderName.split('/').pop() as string,
+        filePath: folderName,
+        isDirectory: true,
+        depth: depth
+      });
 
-    globalEvents.emit('audit', basicAuth.username, `Created folder ${folderName}`, 'create');
+      globalEvents.emit('audit', basicAuth.username, `Created folder ${folderName}`, 'create');
 
-    return {
-      fileName: folderName.split('/').pop() as string,
-      filePath: folderName,
-      isDirectory: true,
-      depth: depth
-    };
+      return {
+        fileName: folderName.split('/').pop() as string,
+        filePath: folderName,
+        isDirectory: true,
+        depth: depth
+      };
+    }
+    catch (e) {
+      console.log(e);
+    }
   }
 
   @Delete('/directory/:folderName(*)')
-  public async deleteFolder(@Params('folderName') folderName: string, @Auth('basic') basicAuth: BasicAuth): Promise<DiscoveredFile> {
-    if (!basicAuth) return;
+  public async deleteFolder(@Params('folderName') folderName: string, @Auth('basic') basicAuth: BasicAuth) {
+    if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
     await $rmdir($join(fileRootDir, folderName));
 
@@ -120,7 +125,7 @@ export class FileController {
 
   @Get('/file/:fileName(*)')
   public async getFile(@Params('fileName') fileName: string, @Res() res: Response, @Req() req: Request, @Auth('basic') basicAuth: BasicAuth) {
-    if (!basicAuth) return;
+    if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
     const file = $getType($join(fileRootDir, fileName));
     if (file) {
@@ -142,7 +147,7 @@ export class FileController {
   @Post('/file')
   @Post('/file/:dirName(*)')
   public async uploadFile(@Params('dirName') dirName: string = '', @Req() req: Request, @Auth('basic') basicAuth: BasicAuth) {
-    if (!basicAuth) return;
+    if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
     const files = req.files?.files instanceof Array ? req.files?.files as UploadedFile[] : [req.files?.files as UploadedFile];
     const processedFiles: DiscoveredFile[] = [];
@@ -180,8 +185,8 @@ export class FileController {
   }
 
   @Delete('/file/:fileName(*)')
-  public async deleteFile(@Params('fileName') fileName: string, @Auth('basic') basicAuth: BasicAuth): Promise<DiscoveredFile> {
-    if (!basicAuth) return;
+  public async deleteFile(@Params('fileName') fileName: string, @Auth('basic') basicAuth: BasicAuth) {
+    if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
     await $rmdir($join(fileRootDir, fileName));
 
@@ -205,8 +210,8 @@ export class FileController {
   }
 
   @Put('/file/:newName/:fileName(*)')
-  public async renameFile(@Params('newName') newName: string, @Params('fileName') fileName: string, @Auth('basic') basicAuth: BasicAuth): Promise<DiscoveredFile> {
-    if (!basicAuth) return;
+  public async renameFile(@Params('newName') newName: string, @Params('fileName') fileName: string, @Auth('basic') basicAuth: BasicAuth) {
+    if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
     await $rename(newName, $join(fileRootDir, fileName));
 

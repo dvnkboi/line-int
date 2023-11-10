@@ -39,6 +39,7 @@ export const env = {
     storagePath: (environment[prefix + 'STORAGE_PATH'] ?? '') as string,
     cookieSecret: (environment[prefix + 'COOKIE_SECRET'] ?? '') as string,
     env: (environment[prefix + 'SERVER_ENV'] ?? 'development') as 'development' | 'production',
+    workerCount: (environment[prefix + 'WORKER_COUNT'] != undefined ? Number(environment[prefix + 'WORKER_COUNT']) : 1) as number,
   },
   auth: {
     token: (environment[prefix + 'AUTH_TOKEN'] ?? '') as string,

@@ -2,7 +2,7 @@ import { json } from "express";
 import { requestLog } from "../middleware/log.js";
 import { errorMiddleware } from "../middleware/error.js";
 import cors from "cors";
-import { Container, ExpressApp, consoleLog, env, globalEvents } from "../utils/index.js";
+import { Container, ExpressApp, env } from "../utils/index.js";
 import { EventStream } from "../controllers/eventStream.js";
 import { FileController } from "../controllers/fileController.js";
 import fileMiddleware from 'express-fileupload';
@@ -17,7 +17,7 @@ const webHost = serverEnv.webHost.replace(/(^\w+:|^)\/\//, '');
 
 export const serve = async () => {
 
-  const corsHosts = [`http://${apiHost}`, `https://${apiHost}`, `http://${webHost}`, `https://${webHost}`];
+  const corsHosts = [`http://${apiHost}`, `https://${apiHost}`, `http://${webHost}`, `https://${webHost}`, 'http://localhost'];
   const app = (await Container.get<ExpressApp>(ExpressApp))
     .setBaseRoute('/api')
     .use(cors({
@@ -38,7 +38,7 @@ export const serve = async () => {
     .attach(Healthcheck)
     .useError(errorMiddleware());
 
-  await app.listen(`${serverEnv.port}:${env.server.env == 'development' ? 'loose' : 'force'}`, (port) => {
-    if (isWorker(1)) app.printMeta();
+  await app.listen(`${serverEnv.port}:${env.server.env == 'development' ? 'loose' : 'force'}`, () => {
+    if (isWorker(1) || isWorker(0)) app.printMeta();
   });
 };

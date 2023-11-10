@@ -10,6 +10,10 @@
     "module": "NodeNext",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "ts-node": {
+    "esm": true
   }
 }

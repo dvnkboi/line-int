@@ -87,26 +87,35 @@ async function registerController(Controller, extractController: (c: Type) => an
 function controllerRouteHandler(controller, methodName, params, status) {
     return (req: Request, res: Response, next: NextFunction) => {
         const args = extractParameters(req, res, next, params);
-        const result = controller[methodName].call(controller, ...args);
-        if (result instanceof Promise) {
-            result.then((r) => {
-                if (!res.headersSent && typeof r !== 'undefined') {
+        try {
+            const result = controller[methodName].call(controller, ...args);
+            if (result instanceof Promise) {
+                result.then((r) => {
+                    if (!res.headersSent && typeof r !== 'undefined') {
+                        if (status) {
+                            res.status(status);
+                        }
+                        res.send(r);
+                    }
+                }).catch((err) => {
+                    console.log(err);
+                    next(err);
+                });
+            }
+            else if (typeof result !== 'undefined') {
+                if (!res.headersSent) {
                     if (status) {
                         res.status(status);
                     }
-                    res.send(r);
+                    res.send(result);
                 }
-            }).catch(next);
-        }
-        else if (typeof result !== 'undefined') {
-            if (!res.headersSent) {
-                if (status) {
-                    res.status(status);
-                }
-                res.send(result);
             }
+            return result;
         }
-        return result;
+        catch (e) {
+            console.log(e);
+            next(e);
+        }
     };
 }
 const GeneratorFunction = (function* () { }).constructor;
@@ -127,7 +136,7 @@ function streamRouteHandler(controller: InstanceType<Type>, methodName, params, 
 
         const args = extractParameters(req, res, next, params);
 
-        res.on('close', () => {
+        res.once('close', () => {
             res.end();
         });
 

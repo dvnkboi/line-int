@@ -27,8 +27,9 @@ const logger = await loggerWorkers;
 globalEvents.setLoggers(logger);
 
 runOnPrimary(async () => {
+
   await logger.info('server', 'Creating workers...');
-  await createWorkers(4, true);
+  await createWorkers(env.server.workerCount, true);
   await State.set('allOnline', true);
 
   let to: NodeJS.Timeout;

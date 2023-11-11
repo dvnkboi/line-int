@@ -67,7 +67,7 @@ services:
       - "traefik.http.middlewares.cors_web.headers.accessControlallowcredentials=true"
       - "traefik.http.routers.web.middlewares=ratelimiter_web,cors_web,compressor_web"
     healthcheck:
-      test: "curl --fail --silent localhost:80/health | grep OK || exit 1"
+      test: [ "CMD", "service", "nginx", "status" ]
       interval: 10s
       timeout: 5s
       retries: 5

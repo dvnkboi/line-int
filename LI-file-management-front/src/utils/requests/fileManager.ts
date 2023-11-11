@@ -1,23 +1,20 @@
 import { Exception } from "../error";
 
+export type DiscoveredFile = {
+  fileName: string;
+  filePath: string;
+  isDirectory: boolean;
+  depth: number;
+};
+
 export type FileArrayResponse = {
-  files: Array<{
-    fileName: string;
-    filePath: string;
-    isDirectory: boolean;
-    depth: number;
-  }>;
+  files: Array<DiscoveredFile>;
   count: number;
 };
 
 export type SearchResponse = {
   files: Array<{
-    item: {
-      fileName: string;
-      filePath: string;
-      isDirectory: boolean;
-      depth: number;
-    };
+    item: DiscoveredFile;
     score: number;
   }>;
   count: number;

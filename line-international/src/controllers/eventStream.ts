@@ -3,10 +3,11 @@ import { type Response } from 'express';
 import { State } from '../utils/threading/state.js';
 
 
-type Client = {
+type ClientOperation = {
   username: string;
   currentOperation: string;
   operationType: 'delete' | 'update' | 'download' | 'create';
+  file: DiscoveredFile;
 };
 
 
@@ -20,8 +21,8 @@ export class EventStream {
 
   @Get('/audit')
   async get(@Queue() queue: QueueType<any>, @Res() res: Response) {
-    const operationBacklogRaw: Client[] = await State.get('operationBacklog') ?? [];
-    const operationBacklog: Client[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
+    const operationBacklogRaw: ClientOperation[] = await State.get('operationBacklog') ?? [];
+    const operationBacklog: ClientOperation[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
 
     const authHeader = res.getHeader('authorization') as string ?? 'Basic unknown:'; // Basic username:password (hashed)
     const username = authHeader.split(' ')[1].split(':')[0];
@@ -32,13 +33,14 @@ export class EventStream {
       queue.push(operation);
     }
 
-    globalEvents.on(`audit`, async (user: string, operation: string, operationType: Client['operationType']) => {
-      const operationBacklogRaw: Client[] = await State.get('operationBacklog') ?? [];
-      const operationBacklog: Client[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
-      const clientOperation: Client = {
+    globalEvents.on(`audit`, async (user: string, operation: string, operationType: ClientOperation['operationType'], file: DiscoveredFile) => {
+      const operationBacklogRaw: ClientOperation[] = await State.get('operationBacklog') ?? [];
+      const operationBacklog: ClientOperation[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
+      const clientOperation: ClientOperation = {
         username: user,
         currentOperation: operation,
-        operationType: operationType
+        operationType: operationType,
+        file
       };
       queue.push(clientOperation);
       operationBacklog.push(clientOperation);

@@ -1,4 +1,4 @@
-import { Controller, Exception, Get, Params, Post, Req, Res, Query, Delete, Put, Cached, Caches, filterFunctions, $mkdir, $rmdir, $rename, Index, env, $getType, $content, $join, globalEvents, Headers, Auth, BasicAuth, calculateFolderDepth } from "../utils/index.js";
+import { Controller, Exception, Get, Params, Post, Req, Res, Query, Delete, Put, Cached, Caches, filterFunctions, $mkdir, $rmdir, $rename, Index, env, $getType, $content, $join, globalEvents, Headers, Auth, BasicAuth, calculateFolderDepth, calculateFileDepth } from "../utils/index.js";
 import type { Response, Request } from 'express';
 import { dirname, join } from "path";
 import { type UploadedFile } from 'express-fileupload';
@@ -57,32 +57,22 @@ export class FileController {
 
   @Post('/directory/:folderName(*)')
   public async createFolder(@Params('folderName') folderName: string, @Auth('basic') basicAuth: BasicAuth) {
-    try {
-      if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
+    if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
-      await $mkdir($join(fileRootDir, folderName));
+    await $mkdir($join(fileRootDir, folderName));
 
-      const depth = calculateFolderDepth(folderName);
+    const file = {
+      fileName: folderName.split('/').pop() as string,
+      filePath: folderName,
+      isDirectory: true,
+      depth: calculateFolderDepth(folderName)
+    };
 
-      Index.add({
-        fileName: folderName.split('/').pop() as string,
-        filePath: folderName,
-        isDirectory: true,
-        depth: depth
-      });
+    Index.add(file);
 
-      globalEvents.emit('audit', basicAuth.username, `Created folder ${folderName}`, 'create');
+    globalEvents.emit('audit', basicAuth.username, `Created folder ${folderName}`, 'create', file);
 
-      return {
-        fileName: folderName.split('/').pop() as string,
-        filePath: folderName,
-        isDirectory: true,
-        depth: depth
-      };
-    }
-    catch (e) {
-      console.log(e);
-    }
+    return file;
   }
 
   @Delete('/directory/:folderName(*)')
@@ -91,23 +81,18 @@ export class FileController {
 
     await $rmdir($join(fileRootDir, folderName));
 
-    const depth = folderName.split('/').length - 1;
-
-    Index.delete({
+    const file = {
       fileName: folderName.split('/').pop() as string,
       filePath: folderName,
       isDirectory: true,
-      depth: depth
-    });
-
-    globalEvents.emit('audit', basicAuth.username, `Deleted folder ${folderName}`, 'delete');
-
-    return {
-      fileName: folderName.split('/').pop() as string,
-      filePath: folderName,
-      isDirectory: true,
-      depth: depth
+      depth: calculateFolderDepth(folderName)
     };
+
+    Index.delete(file);
+
+    globalEvents.emit('audit', basicAuth.username, `Deleted folder ${folderName}`, 'delete', file);
+
+    return file;
   }
 
   @Get('/directory')
@@ -127,21 +112,16 @@ export class FileController {
   public async getFile(@Params('fileName') fileName: string, @Res() res: Response, @Req() req: Request, @Auth('basic') basicAuth: BasicAuth) {
     if (!basicAuth) return new Exception('Unauthorized', 'UnauthorizedException');
 
-    const file = $getType($join(fileRootDir, fileName));
-    if (file) {
+    const fileMimeType = await $getType($join(fileRootDir, fileName));
+
+    if (fileMimeType) {
+      globalEvents.emit('audit', basicAuth.username, `Downloaded file ${fileName}`, 'download', null);
       res.contentType('application/octet-stream');
       res.sendFile(`${fileRootDir}/${fileName}`);
       return;
     }
 
-    globalEvents.emit('audit', basicAuth.username, `Downloaded file ${fileName}`, 'download');
-
-    return {
-      fileName: '',
-      filePath: '',
-      isDirectory: false,
-      depth: -1
-    };
+    return null;
   }
 
   @Post('/file')
@@ -166,17 +146,17 @@ export class FileController {
 
     for (const file of files) {
       await file.mv($join(path, file.name));
-      processedFiles.push({
+      const fileObj = {
         fileName: file.name,
         filePath: $join(dirName, file.name),
         isDirectory: false,
-        depth: dirName.split('/').length - 1
-      });
+        depth: calculateFileDepth($join(dirName, file.name))
+      } as DiscoveredFile;
+      processedFiles.push(fileObj);
+      globalEvents.emit('audit', basicAuth.username, `Uploaded files ${processedFiles.map((file) => file.fileName).join(', ')}`, 'create', fileObj);
     }
 
     Index.add(...processedFiles);
-
-    globalEvents.emit('audit', basicAuth.username, `Uploaded files ${processedFiles.map((file) => file.fileName).join(', ')}`, 'create');
 
     return {
       files: processedFiles,
@@ -190,23 +170,19 @@ export class FileController {
 
     await $rmdir($join(fileRootDir, fileName));
 
-    Index.delete({
+    const file = {
       fileName: fileName.split('/').pop() as string,
       filePath: fileName,
       isDirectory: false,
-      depth: 0
-    });
+      depth: calculateFileDepth(fileName)
+    } as DiscoveredFile;
 
-    const depth = fileName.split('/').length - 1;
+    Index.delete(file);
 
-    globalEvents.emit('audit', basicAuth.username, `Deleted file ${fileName}`, 'delete');
 
-    return {
-      fileName: fileName.split('/').pop() as string,
-      filePath: fileName,
-      isDirectory: false,
-      depth: depth
-    };
+    globalEvents.emit('audit', basicAuth.username, `Deleted file ${fileName}`, 'delete', file);
+
+    return file;
   }
 
   @Put('/file/:newName/:fileName(*)')
@@ -215,22 +191,19 @@ export class FileController {
 
     await $rename(newName, $join(fileRootDir, fileName));
 
-    Index.update(fileName, {
+    const newFileName = $join(fileName, '..', newName);
+
+    const file = {
       fileName: newName,
-      filePath: $join(fileName, '..', newName),
+      filePath: newFileName,
       isDirectory: false,
-      depth: fileName.split('/').length - 1
-    });
-
-    const depth = fileName.split('/').length - 1;
-
-    globalEvents.emit('audit', basicAuth.username, `Renamed file ${fileName} to ${newName}`, 'update');
-
-    return {
-      fileName: newName,
-      filePath: $join(fileName, '..', newName),
-      isDirectory: false,
-      depth: depth
+      depth: calculateFileDepth(newFileName)
     };
+
+    Index.update(fileName, file);
+
+    globalEvents.emit('audit', basicAuth.username, `Renamed file ${fileName} to ${newName}`, 'update', file);
+
+    return file;
   }
 }

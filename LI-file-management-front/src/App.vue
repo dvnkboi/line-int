@@ -136,8 +136,8 @@
             <div @click="fileInput.click()" class="group-hover:-translate-y-0.5 transition duration-500">Upload</div>
           </button>
         </div>
-        <div v-if="files.length > 0" class="flex justify-start items-start flex-wrap gap-6 flex-row content-start"
-          ref="fileContainer">
+        <div v-if="Object.keys(files).length > 0"
+          class="flex justify-start items-start flex-wrap gap-6 flex-row content-start" ref="fileContainer">
           <TransitionGroup name="list-fade-x" @beforeLeave="listAnimationFix">
             <div v-for="(file, index) in files" :key="index">
               <div
@@ -179,10 +179,8 @@
   
 <script setup lang='ts'>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { getFiles, getFilePreview, FilePreviewType, FileArrayResponse, getFile, searchFiles, createFolder, join, deleteFolder, uploadFiles, deleteFile } from './utils/requests/fileManager';
+import { getFiles, getFilePreview, FilePreviewType, FileArrayResponse, DiscoveredFile, getFile, searchFiles, createFolder, join, deleteFolder, uploadFiles, deleteFile } from './utils/requests/fileManager';
 import CsvViewer from './components/CsvViewer.vue';
-import Scrollbar from 'smooth-scrollbar/index';
-import OverscrollPlugin, { OverscrollOptions } from 'smooth-scrollbar/plugins/overscroll';
 import { genericAnimation, listAnimationFix } from './utils/theme/index';
 import { useAutoAnimate } from '@formkit/auto-animate/vue';
 import { useAnimatedModal } from './composables/useAnimatedModal';
@@ -190,12 +188,11 @@ import { onClickOutside } from '@vueuse/core';
 import { Subscriber } from './utils/events/subscription';
 import { Exception } from './utils/error';
 import AuditItem from './components/auditItem.vue';
-Scrollbar.use(OverscrollPlugin);
 
 
-const discoveredFiles = ref<FileArrayResponse['files']>([]);
-const discoveredFolders = ref<FileArrayResponse['files']>([]);
-const files = ref<FilePreviewType[]>([]);
+const discoveredFiles = ref<{ [filePath: string]: DiscoveredFile; }>({});
+const discoveredFolders = ref<{ [filePath: string]: DiscoveredFile; }>({});
+const files = ref<{ [filePath: string]: FilePreviewType; }>({});
 const currentPath = ref(localStorage.getItem('currentPath') ?? '');
 const isRootPath = ref(false);
 const showingDeleteConfirmationFor = ref('');
@@ -249,15 +246,22 @@ const downloadFile = (file: FilePreviewType) => {
 
 const listFiles = async (dir = '/') => {
   const fileArray = await getFiles(dir);
-  files.value = [];
+  files.value = {};
 
-  discoveredFiles.value = fileArray.files.filter(file => !file.isDirectory);
-  discoveredFolders.value = fileArray.files.filter(file => file.isDirectory);
+  // convert arr to obj
+  discoveredFiles.value = fileArray.files.filter(file => !file.isDirectory).reduce((acc: Record<string, DiscoveredFile>, file) => {
+    acc[file.filePath] = file;
+    return acc;
+  }, {});
+  discoveredFolders.value = fileArray.files.filter(file => file.isDirectory).reduce((acc: Record<string, DiscoveredFile>, file) => {
+    acc[file.filePath] = file;
+    return acc;
+  }, {});
 
-  for (const file of discoveredFiles.value) {
+  for (const file of Object.values(discoveredFiles.value)) {
     const preview = await getFilePreview(file.filePath);
     if (preview.content == null || preview.content.trim() == '') continue;
-    files.value.push(preview);
+    files.value[preview.filePath] = preview;
   }
 
   localStorage.setItem('currentPath', dir);
@@ -265,32 +269,6 @@ const listFiles = async (dir = '/') => {
 
   if (dir == '/' || dir == '') isRootPath.value = true;
   else isRootPath.value = false;
-
-  initializeScroll();
-};
-
-const initializeScroll = () => {
-  nextTick(() => {
-    Scrollbar.destroyAll();
-    const elements = document.querySelectorAll('.scrolls');
-
-    for (const element of elements) {
-      Scrollbar.init(element as HTMLElement, {
-        continuousScrolling: true,
-        damping: 0.03,
-        thumbMinSize: 10,
-        renderByPixels: true,
-        plugins: {
-          overscroll: {
-            damping: 0.03,
-            glowColor: '#fff',
-            maxOverscroll: 150,
-            effect: 'glow',
-          } as OverscrollOptions
-        }
-      });
-    }
-  });
 };
 
 const goBack = async () => {
@@ -312,16 +290,22 @@ const search = (input: string) => {
       await listFiles(currentPath.value);
       return;
     }
-    files.value = [];
+    files.value = {};
     const searchResults = await searchFiles(input, []);
 
-    discoveredFiles.value = searchResults.files.filter(file => !file.item.isDirectory).map(file => file.item);
-    discoveredFolders.value = searchResults.files.filter(file => file.item.isDirectory).map(file => file.item);
+    discoveredFiles.value = searchResults.files.filter(file => !file.item.isDirectory).map(file => file.item).reduce((acc: Record<string, DiscoveredFile>, file) => {
+      acc[file.filePath] = file;
+      return acc;
+    }, {});
+    discoveredFolders.value = searchResults.files.filter(file => file.item.isDirectory).map(file => file.item).reduce((acc: Record<string, DiscoveredFile>, file) => {
+      acc[file.filePath] = file;
+      return acc;
+    }, {});
 
-    for (const file of discoveredFiles.value) {
+    for (const file of Object.values(discoveredFiles.value)) {
       const preview = await getFilePreview(file.filePath);
       if (preview.content == null || preview.content.trim() == '') continue;
-      files.value.push(preview);
+      files.value[preview.filePath] = preview;
     }
 
   }, 500);
@@ -335,15 +319,11 @@ const handleCreateFolderInput = async (event: KeyboardEvent) => {
 
 const createFolderHandler = async () => {
   folderCreationModal.unfocus();
-
   const folder = await createFolder(join(currentPath.value, folderName.value));
   if (Exception.isException(folder)) {
     alert(folder.errorMessage);
     return;
   }
-  const exists = discoveredFolders.value.find(folder => folder.filePath == join(currentPath.value, folderName.value));
-  if (exists != null) return;
-  discoveredFolders.value.push(folder);
 };
 
 const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => {
@@ -353,7 +333,6 @@ const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => 
       alert(deleteResp.errorMessage);
       return;
     }
-    discoveredFolders.value = discoveredFolders.value.filter(folder => folder.filePath != path);
   }
   else {
     const deleteResp = await deleteFile(path);
@@ -361,8 +340,6 @@ const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => 
       alert(deleteResp.errorMessage);
       return;
     }
-    files.value = files.value.filter(file => file.filePath != path);
-
   }
   showingDeleteConfirmationFor.value = '';
 };
@@ -387,17 +364,42 @@ type ClientOperation = {
   status: 'online' | 'offline';
   currentOperation: string;
   operationType: 'create' | 'delete' | 'download' | 'update';
+  file: DiscoveredFile;
 };
 
 // subscribe to audit log
 
 Subscriber.subscribe('api', 'events:audit');
 
-Subscriber.on<ClientOperation>('events:audit', (payload) => {
-  console.log(payload);
+Subscriber.on<ClientOperation>('events:audit', async (payload) => {
   const operation = payload.message;
   if (Exception.isException(operation)) return;
   eventLog.value.push(operation);
+  console.log(operation);
+
+  if (operation.file.isDirectory) {
+    if (operation.operationType == 'create') {
+      discoveredFolders.value[operation.file.filePath] = operation.file;
+    }
+    else if (operation.operationType == 'delete') {
+      delete discoveredFolders.value[operation.file.filePath];
+    }
+    else if (operation.operationType == 'update') {
+      discoveredFolders.value[operation.file.filePath] = operation.file;
+    }
+  }
+  else {
+    if (operation.operationType == 'create') {
+      await listFiles(currentPath.value);
+    }
+    else if (operation.operationType == 'delete') {
+      delete discoveredFiles.value[operation.file.filePath];
+      delete files.value[operation.file.filePath];
+    }
+    else if (operation.operationType == 'update') {
+      await listFiles(currentPath.value);
+    }
+  }
 });
 
 Subscriber.on('window:offline', () => {

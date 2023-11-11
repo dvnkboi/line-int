@@ -208,21 +208,27 @@ function extractParameters(req, res, next, params: ParameterConfiguration[] = []
                 });
                 break;
             case ParameterType.AUTH:
-                const authHeader = getParam(req, 'headers', 'authorization');
-                //Basic dGVzdDpwYXNzd29yZA==
+                const authHeader: string = getParam(req, 'headers', 'authorization') ?? 'Basic ';
+                const [authType, authData] = authHeader.split(' ');
                 if (name == 'basic') {
-                    const auth = Buffer.from(authHeader as string ?? 'Basic ', 'base64').toString('ascii');
-                    const [username, password] = auth.split(' ')[1].split(':');
-                    args[index] = !password ? null : {
-                        username,
-                        password
-                    };
+                    if (authType === 'Basic' && authData !== undefined) {
+                        const [username, password] = Buffer.from(authData, 'base64').toString().split(':');
+                        args[index] = { username, password };
+                    }
+                    else {
+                        args[index] = {
+                            username: 'unknown',
+                            password: undefined
+                        };
+                    }
                 }
-                if (name == 'bearer') {
-                    const auth = Buffer.from(authHeader as string ?? 'Basic ', 'base64').toString('ascii');
-                    const token = auth.split(' ')[1];
-                    if (token.length < 1) args[index] = token;
-                    args[index] = null;
+                else {
+                    if (authType === 'Bearer' && authData !== undefined) {
+                        args[index] = Buffer.from(authData, 'base64').toString();
+                    }
+                    else {
+                        args[index] = undefined;
+                    }
                 }
                 break;
             case ParameterType.DEFAULT:

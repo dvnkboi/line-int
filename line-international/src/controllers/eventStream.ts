@@ -25,14 +25,13 @@ export class EventStream {
     const operationBacklogRaw: ClientOperation[] = await State.get('operationBacklog') ?? [];
     const operationBacklog: ClientOperation[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
 
-    const eventId = 'event_' + auth.username;
+    const eventId = `event-${auth.username}-${Date.now()}`;
 
     for (const operation of operationBacklog) {
       queue.push(operation);
     }
 
     globalEvents.on(`audit`, async (user: string, operation: string, operationType: ClientOperation['operationType'], file: DiscoveredFile) => {
-      console.log('dispatching event', user, operation, operationType);
       const operationBacklogRaw: ClientOperation[] = await State.get('operationBacklog') ?? [];
       const operationBacklog: ClientOperation[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
       const clientOperation: ClientOperation = {
@@ -48,7 +47,6 @@ export class EventStream {
     }, eventId, true);
 
     res.once('close', () => {
-      console.log('closing event');
       globalEvents.off('test', eventId);
     });
 

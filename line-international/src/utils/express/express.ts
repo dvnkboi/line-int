@@ -210,37 +210,32 @@ function extractParameters(req: Request, res: Response, next: NextFunction, para
             case ParameterType.AUTH:
                 const authHeader: string = getParam(req, 'headers', 'authorization') ?? 'Basic ';
 
-                console.log(authHeader, req.headers.authorization);
+                const [authType, authData] = authHeader.toLowerCase().split(' ');
 
-                const [authType, authData] = authHeader.split(' ');
-
-                console.log(authType, authData);
                 if (name == 'basic') {
-                    if (authType === 'Basic' && authData !== '') {
+                    if (authType != 'basic' && authType != 'bearer' && authType.length > 0) {
+                        args[index] = {
+                            username: authType,
+                            password: undefined
+                        };
+                    }
+                    else if (authType === 'basic' && authData !== '') {
                         const [username, password] = Buffer.from(authData, 'base64').toString().split(':');
                         args[index] = { username, password };
-
-                        console.log('basic auth success', args[index]);
                     }
                     else {
                         args[index] = {
                             username: 'unknown',
                             password: undefined
                         };
-
-                        console.log('basic auth failed', args[index]);
                     }
                 }
                 else {
-                    if (authType === 'Bearer' && authData !== undefined) {
+                    if (authType === 'bearer' && authData !== undefined) {
                         args[index] = Buffer.from(authData, 'base64').toString();
-
-                        console.log('bearer auth success', args[index]);
                     }
                     else {
                         args[index] = undefined;
-
-                        console.log('bearer auth failed', args[index]);
                     }
                 }
                 break;

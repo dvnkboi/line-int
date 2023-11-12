@@ -1,9 +1,9 @@
 global:
-  sendAnonymousUsage: true
+  sendAnonymousUsage: false
 
 api:
-  dashboard: true
-  insecure: true
+  dashboard: false
+  insecure: false
 
 providers:
   docker:
@@ -39,4 +39,4 @@ certificatesResolvers:
       storage: '/etc/certs/acme.json'
       httpChallenge:
         entryPoint: http
-      caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'
+      # caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'

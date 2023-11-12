@@ -92,30 +92,23 @@ export function createWalker(root: string) {
 
     const files = await readdir(join(root, dir), { withFileTypes: true });
     for (const file of files) {
+      const path = sanitizePath($join(dir, file.name));
       if (file.isDirectory()) {
+        yield {
+          fileName: file.name,
+          filePath: path,
+          isDirectory: true,
+          depth: calculateFolderDepth(path)
+        };
         if (maxDepth > depth) {
-          yield {
-            fileName: file.name,
-            filePath: join(dir, file.name),
-            isDirectory: true,
-            depth: depth + 1
-          };
-          yield* walkDirectory(join(dir, file.name), maxDepth);
-        }
-        else {
-          yield {
-            fileName: file.name,
-            filePath: join(dir, file.name),
-            isDirectory: true,
-            depth: depth + 1
-          };
+          yield* walkDirectory($join(dir, file.name), maxDepth);
         }
       } else {
         yield {
           fileName: file.name,
-          filePath: join(dir, file.name),
+          filePath: path,
           isDirectory: false,
-          depth: depth + 1
+          depth: calculateFileDepth(path)
         };
       }
     }
@@ -137,10 +130,12 @@ export const sanitizePath = (path: string) => {
 
 export const calculateFolderDepth = (path: string) => {
   if (path == '') return 0;
+  if (!path.includes('/')) return 1;
   return path.split('/').length;
 };
 
 export const calculateFileDepth = (path: string) => {
-  if (path == '') return 1;
-  return path.split('/').length + 1;
+  if (path == '') return 0;
+  if (!path.includes('/')) return 1;
+  return path.split('/').length;
 };

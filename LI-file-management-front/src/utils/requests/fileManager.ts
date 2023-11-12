@@ -174,6 +174,29 @@ export const deleteFile = async (filePath: string): Promise<FileArrayResponse['f
   return data;
 };
 
+export const uploadFilesXHR = (path: string, files: FileList, progress: (progress: number) => void = () => { }) => {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files', files[i]);
+    }
+
+    if (path.charAt(0) === '/') {
+      path = path.substring(1);
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener('progress', e => progress(e.loaded / e.total));
+    xhr.addEventListener('load', () => resolve({ status: xhr.status, body: xhr.responseText }));
+    xhr.addEventListener('error', () => reject(new Error('File upload failed, try again later')));
+    xhr.addEventListener('abort', () => reject(new Error('File upload aborted')));
+    xhr.withCredentials = true;
+    xhr.open('POST', `${host}/api/files/file/${path}`, true);
+    Array.from(files).forEach((file, index) => formData.append(index.toString(), file));
+    xhr.send(formData);
+  });
+};
+
 export const uploadFiles = async (path: string, files: FileList, progress: (progress: number) => void = () => { }): Promise<any | Exception<any>> => {
   var formdata = new FormData();
 

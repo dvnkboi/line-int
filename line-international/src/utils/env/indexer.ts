@@ -26,7 +26,7 @@ export class Index {
       this.index.push({
         depth: file.depth,
         fileName: file.fileName,
-        filePath: sanitizePath(file.filePath),
+        filePath: file.filePath,
         isDirectory: file.isDirectory
       });
     }

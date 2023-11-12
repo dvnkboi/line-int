@@ -1,8 +1,12 @@
 <template>
-  <div class="w-full px-2 py-1 rounded-xl shadow-xl flex justify-start items-start flex-col"
+  <div class="w-full px-2 py-1 rounded-xl shadow-xl flex justify-start items-start flex-col relative"
     :class="[operationTypeColor]">
     <h1 class="font-bold text-2xl">{{ item.username }}</h1>
-    <h3 class="font-bold text-lg">{{ item.currentOperation }}</h3>
+    <h3 class="font-bold text-lg flex justify-between items-end flex-wrap gap-x-2 content-start w-full">{{
+      item.currentOperation }}
+      <span class="text-sm mb-0.5">{{ item.date }}</span>
+    </h3>
+
   </div>
 </template>
   
@@ -14,6 +18,7 @@ type ClientOperation = {
   status: 'online' | 'offline';
   currentOperation: string;
   operationType: 'create' | 'delete' | 'download' | 'update';
+  date: Date;
 };
 
 const props = defineProps<{

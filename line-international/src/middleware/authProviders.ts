@@ -5,8 +5,6 @@ const authEnv = env.auth;
 
 const admin = authEnv.token.split(':');
 
-console.log(admin);
-
 export class BearerAuth implements IAuthProvider<{ token: string; }>{
   user: IUser;
   verify(params: { token?: string; }): Promise<boolean> {

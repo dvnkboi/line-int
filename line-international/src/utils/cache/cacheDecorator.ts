@@ -37,7 +37,6 @@ export function Caches(): ClassDecorator {
         const cacheKey = meta.key + JSON.stringify(args, useCircularReferenceReplacer(1));
         const cachedResult = await cache.get(cacheKey);
         if (cachedResult) {
-          console.log(`Cache hit: ${key}`, meta.expiry, cacheKey);
           return cachedResult;
         }
         const result = await originalMethod.apply(this, args);

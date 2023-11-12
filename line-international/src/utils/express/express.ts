@@ -174,7 +174,7 @@ function streamRouteHandler(controller: InstanceType<Type>, methodName, params, 
 /**
  * Extract parameters for handlers
  */
-function extractParameters(req, res, next, params: ParameterConfiguration[] = []) {
+function extractParameters(req: Request, res: Response, next: NextFunction, params: ParameterConfiguration[] = []) {
     const args = [];
     for (const { name, index, type, data } of params) {
         switch (type) {
@@ -210,7 +210,7 @@ function extractParameters(req, res, next, params: ParameterConfiguration[] = []
             case ParameterType.AUTH:
                 const authHeader: string = getParam(req, 'headers', 'authorization') ?? 'Basic ';
 
-                console.log(authHeader);
+                console.log(authHeader, req.headers.authorization);
 
                 const [authType, authData] = authHeader.split(' ');
 
@@ -265,7 +265,7 @@ async function getController(Controller) {
 /**
  * Get parameter value from the source object
  */
-function getParam(source, paramType, name) {
+function getParam(source: Request, paramType?: string, name?: string) {
     const param = source[paramType] || source;
     return name ? param[name] : param;
 }

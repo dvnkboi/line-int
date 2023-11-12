@@ -52,6 +52,14 @@
           </div>
         </div>
       </div>
+      <transition name="fade-x" appear>
+        <div v-if="updatingFiles"
+          class="fixed bottom-4 right-4 left-4 flex justify-center items-center z-50 pointer-events-none">
+          <div class="bg-muted text-muted-foreground rounded-2xl shadow-xl px-2 py-2 font-bold">
+            processing {{ progress.toFixed(0) }}%
+          </div>
+        </div>
+      </transition>
       <div class="h-16 flex justify-between items-center px-4 w-full bg-card text-card-foreground shrink-0 rounded-xl">
         <div class="flex justify-start items-center gap-1 relative">
           <transition name="fade-x" appear>
@@ -162,10 +170,8 @@
                   class="overflow-auto aspect-[16/10] h-72 bg-background text-background-foreground shadow-2xl shadow-black rounded-2xl px-4 py-2 group-hover:scale-90 group-hover:-translate-y-2 transition duration-500">
                   <CsvViewer :csvString="file.content" />
                 </div>
-                <div v-if="file.type == 'image'"
-                  :style="[`background-image: URL(${file.content})`, 'background-size: auto 100%; background-repeat: no-repeat; background-position: center;']"
-                  class="aspect-[16/10] h-72 bg-background text-background-foreground shadow-2xl shadow-black rounded-2xl px-4 py-2 group-hover:scale-90 group-hover:-translate-y-2 transition duration-500">
-                </div>
+                <img v-if="file.type == 'image'" :src="file.content" :alt="file.type" loading="lazy"
+                  class="aspect-[16/10] object-contain h-72 bg-background text-background-foreground shadow-2xl shadow-black rounded-2xl px-4 py-2 group-hover:scale-90 group-hover:-translate-y-2 transition duration-500">
               </div>
             </div>
           </TransitionGroup>
@@ -179,7 +185,7 @@
   
 <script setup lang='ts'>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { getFiles, getFilePreview, FilePreviewType, FileArrayResponse, DiscoveredFile, getFile, searchFiles, createFolder, join, deleteFolder, uploadFiles, deleteFile } from './utils/requests/fileManager';
+import { getFiles, getFilePreview, FilePreviewType, FileArrayResponse, DiscoveredFile, getFile, searchFiles, createFolder, join, deleteFolder, uploadFiles, deleteFile, uploadFilesXHR } from './utils/requests/fileManager';
 import CsvViewer from './components/CsvViewer.vue';
 import { genericAnimation, listAnimationFix } from './utils/theme/index';
 import { useAutoAnimate } from '@formkit/auto-animate/vue';
@@ -209,6 +215,8 @@ const deleteConfirmationContainer = ref<HTMLElement>();
 const fileInput = ref<HTMLInputElement>();
 const deletingType = ref<'file' | 'folder' | ''>('');
 const eventLog = ref<ClientOperation[]>([]);
+let updatingFiles = ref(false);
+const progress = ref(0);
 
 onClickOutside(deleteConfirmationContainer, () => {
   showingDeleteConfirmationFor.value = '';
@@ -240,8 +248,8 @@ onMounted(async () => {
 });
 
 
-const downloadFile = (file: FilePreviewType) => {
-  getFile(file.filePath);
+const downloadFile = async (file: FilePreviewType) => {
+  await getFile(file.filePath);
 };
 
 const listFiles = async (dir = '/') => {
@@ -318,21 +326,29 @@ const handleCreateFolderInput = async (event: KeyboardEvent) => {
 };
 
 const createFolderHandler = async () => {
+  updatingFiles.value = true;
   folderCreationModal.unfocus();
+
   const folder = await createFolder(join(currentPath.value, folderName.value));
   if (Exception.isException(folder)) {
     alert(folder.errorMessage);
     return;
   }
+  const exists = discoveredFolders.value[join(currentPath.value, folderName.value)];
+  if (exists != null) return;
+  discoveredFolders.value[join(currentPath.value, folderName.value)] = folder;
+  updatingFiles.value = false;
 };
 
 const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => {
+  updatingFiles.value = true;
   if (type == 'folder') {
     const deleteResp = await deleteFolder(path);
     if (Exception.isException(deleteResp)) {
       alert(deleteResp.errorMessage);
       return;
     }
+    delete discoveredFolders.value[path];
   }
   else {
     const deleteResp = await deleteFile(path);
@@ -340,8 +356,11 @@ const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => 
       alert(deleteResp.errorMessage);
       return;
     }
+    delete discoveredFiles.value[path];
+    delete files.value[path];
   }
   showingDeleteConfirmationFor.value = '';
+  updatingFiles.value = false;
 };
 
 const showDeleteConfirmation = (path: string, type: 'folder' | 'file' = 'file') => {
@@ -350,12 +369,16 @@ const showDeleteConfirmation = (path: string, type: 'folder' | 'file' = 'file') 
 };
 
 const fileUploadHandler = async () => {
-  const resp = await uploadFiles(currentPath.value, fileInput.value.files);
+  updatingFiles.value = true;
+  const resp = await uploadFilesXHR(currentPath.value, fileInput.value.files, (progressVal) => {
+    progress.value = progressVal * 100;
+  });
   if (Exception.isException(resp)) {
     alert(resp.errorMessage);
     return;
   }
   await listFiles(currentPath.value);
+  updatingFiles.value = false;
 };
 
 
@@ -365,6 +388,7 @@ type ClientOperation = {
   currentOperation: string;
   operationType: 'create' | 'delete' | 'download' | 'update';
   file: DiscoveredFile;
+  date: Date;
 };
 
 // subscribe to audit log
@@ -374,9 +398,13 @@ Subscriber.subscribe('api', 'events:audit');
 Subscriber.on<ClientOperation>('events:audit', async (payload) => {
   const operation = payload.message;
   if (Exception.isException(operation)) return;
+  const alreadyProcessed = eventLog.value.find(item => item.file.filePath == operation.file.filePath && item.operationType == operation.operationType);
+  if (alreadyProcessed != null) {
+    return;
+  }
   eventLog.value.push(operation);
-  console.log(operation);
 
+  if (updatingFiles) return;
   if (operation.file.isDirectory) {
     if (operation.operationType == 'create') {
       discoveredFolders.value[operation.file.filePath] = operation.file;
@@ -390,6 +418,7 @@ Subscriber.on<ClientOperation>('events:audit', async (payload) => {
   }
   else {
     if (operation.operationType == 'create') {
+      discoveredFiles.value[operation.file.filePath] = operation.file;
       await listFiles(currentPath.value);
     }
     else if (operation.operationType == 'delete') {
@@ -397,14 +426,11 @@ Subscriber.on<ClientOperation>('events:audit', async (payload) => {
       delete files.value[operation.file.filePath];
     }
     else if (operation.operationType == 'update') {
+      discoveredFiles.value[operation.file.filePath] = operation.file;
       await listFiles(currentPath.value);
     }
   }
 });
-
-Subscriber.on('window:offline', () => {
-  eventLog.value = [];
-})
 
 </script>
   

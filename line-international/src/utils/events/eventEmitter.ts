@@ -78,6 +78,7 @@ export class EventEmitter<T extends string = string> {
     const map = this.handlerMap.get(event);
 
     if (typeof listenerOrKey === 'string') {
+      console.log('deleting', listenerOrKey);
       map.delete(listenerOrKey);
     }
     else {

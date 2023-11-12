@@ -1,4 +1,4 @@
-import { Controller, Exception, Get, Params, Post, Req, Res, Query, Delete, Put, Cached, Caches, filterFunctions, $mkdir, $rmdir, $rename, Index, env, $getType, $content, $join, globalEvents, Headers, Auth, BasicAuth, calculateFolderDepth, calculateFileDepth } from "../utils/index.js";
+import { Controller, Exception, Get, Params, Post, Req, Res, Query, Delete, Put, Cached, Caches, filterFunctions, $mkdir, $rmdir, $rename, Index, env, $getType, $content, $join, globalEvents, Headers, Auth, BasicAuth, calculateFolderDepth, calculateFileDepth, sanitizePath } from "../utils/index.js";
 import type { Response, Request } from 'express';
 import { dirname, join } from "path";
 import { type UploadedFile } from 'express-fileupload';
@@ -132,12 +132,7 @@ export class FileController {
     const files = req.files?.files instanceof Array ? req.files?.files as UploadedFile[] : [req.files?.files as UploadedFile];
     const processedFiles: DiscoveredFile[] = [];
 
-    if (dirName.charAt(0) !== '/') {
-      dirName = '/' + dirName;
-    }
-
-    const path = $join(fileRootDir, dirName);
-
+    dirName = sanitizePath(dirName);
 
     if (!files) return {
       files: [],
@@ -145,15 +140,16 @@ export class FileController {
     };
 
     for (const file of files) {
-      await file.mv($join(path, file.name));
+      const filePath = $join(dirName, file.name);
+      await file.mv($join(fileRootDir, filePath));
       const fileObj = {
         fileName: file.name,
-        filePath: $join(dirName, file.name),
+        filePath: filePath,
         isDirectory: false,
-        depth: calculateFileDepth($join(dirName, file.name))
+        depth: calculateFileDepth(filePath)
       } as DiscoveredFile;
       processedFiles.push(fileObj);
-      globalEvents.emit('audit', basicAuth.username, `Uploaded files ${processedFiles.map((file) => file.fileName).join(', ')}`, 'create', fileObj);
+      globalEvents.emit('audit', basicAuth.username, `Uploaded file ${fileObj.fileName}`, 'create', fileObj);
     }
 
     Index.add(...processedFiles);

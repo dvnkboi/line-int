@@ -96,14 +96,6 @@ export class ExpressApp {
     this.discoveredControllers = [];
   }
 
-  public discoverControllers() {
-    console.log('discovering controllers', ExpressApp.discoveredControllers);
-    for (const controller of ExpressApp.discoveredControllers) {
-      this.attach(controller);
-    }
-    return this;
-  }
-
   private async attachToApp() {
     const classControllers = Array.from(this.classMap.values());
     const instanceControllers = Array.from(this.instanceMap.values());

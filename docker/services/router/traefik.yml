@@ -39,4 +39,4 @@ certificatesResolvers:
       storage: '/etc/certs/acme.json'
       httpChallenge:
         entryPoint: http
-      # caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'
+      caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'

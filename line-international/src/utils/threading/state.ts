@@ -4,11 +4,11 @@ import { getCluster, isWorker } from "./threadManager.js";
 
 type StateManager = {
   set: <T = any>(key: string, value?: T) => Promise<void>;
-  get: <T = any>(key?: string) => Promise<T>;
+  get: <T = any>(key?: string, forceFetch?: boolean) => Promise<T>;
   waitUntilValue: <T = any>(key: string, value?: T) => Promise<void>;
   waitUntilCb: <T = any>(key: string, cb: (val: T) => boolean) => Promise<void>;
   remove: (key: string) => Promise<void>;
-  has: (key: string) => Promise<boolean>;
+  has: (key: string, forceFetch?: boolean) => Promise<boolean>;
   watch: <T = any>(key: string, cb: (val: T, old: T) => void | Promise<void>) => () => void;
   events: EventEmitter<'stateMutation'>;
 };
@@ -35,9 +35,11 @@ const createStateManager = (): StateManager => {
     // event handler
     const events = new EventEmitter<'stateMutation'>();
 
+    const localHash = new Hash();
 
     // state management
     const set = async (key: string, value?: any): Promise<void> => { // send a setState to main thread, await respinse and send confirmation
+      localHash.set(key, value);
       return new Promise((res) => {
         const handler = (message: any) => {
           if (message.type == 'setState_return') {
@@ -58,11 +60,20 @@ const createStateManager = (): StateManager => {
       });
     };
 
-    const get = async <T = any>(key?: string): Promise<T> => {
+    const get = async <T = any>(key?: string, forceFetch = false): Promise<T> => {
+      if (!forceFetch) {
+        const local = localHash.get(key);
+        if (local) {
+          return local;
+        }
+      }
       return new Promise((res) => {
         const handler = (message: any) => {
           if (message.type == 'getState_return') {
             res(message.value);
+            if (localHash.get(key) != message.value) {
+              localHash.set(key, message.value);
+            }
             process.off('message', handler);
           }
         };
@@ -124,8 +135,8 @@ const createStateManager = (): StateManager => {
       return await set(key);
     };
 
-    const has = async (key: string): Promise<boolean> => {
-      return (await get(key)) != undefined;
+    const has = async (key: string, forceFetch = false): Promise<boolean> => {
+      return (await get(key, forceFetch)) != undefined;
     };
 
 
@@ -133,6 +144,9 @@ const createStateManager = (): StateManager => {
     process.on('message', (message: any) => {
       if (message.type == 'stateMutation') {
         events.emit('stateMutation', message.key, message.value, message.old);
+        if (localHash.get(message.key) != message.value) {
+          localHash.set(message.key, message.value);
+        }
       }
     });
 

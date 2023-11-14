@@ -5,7 +5,21 @@ import { acquireLock, releaseLock } from "../threading/locks.js";
 
 @Injectable()
 export class Logger implements ILogOutput {
+
+  public static readonly MEGABYTE = 1024 * 1024;
+  public static readonly KILOBYTE = 1024;
+  public static readonly BYTE = 1;
+  public static readonly MAX_FILE_SIZE = 10 * Logger.MEGABYTE;
+
   private loggers: ILogOutput[];
+
+  canRead: boolean;
+
+  limit(limit: number, tag?: string): void {
+    for (const logger of this.loggers) {
+      logger.limit(limit, tag);
+    }
+  }
 
   constructor () {
     this.loggers = [tagSplitFileLog];
@@ -70,5 +84,11 @@ export class Logger implements ILogOutput {
       await logger.clear(tag);
     }
     await releaseLock(`log_${tag}`);
+  }
+
+  public async *read(tag?: string): AsyncGenerator<string> {
+    const readable = this.loggers.find(logger => logger.canRead);
+    if (!readable) return;
+    yield* readable.read(tag);
   }
 }

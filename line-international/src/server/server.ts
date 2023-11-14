@@ -2,12 +2,13 @@ import { json } from "express";
 import { requestLog } from "../middleware/log.js";
 import { errorMiddleware } from "../middleware/error.js";
 import cors from "cors";
-import { Container, ExpressApp, env } from "../utils/index.js";
+import { Container, ExpressApp, Logger, env } from "../utils/index.js";
 import { EventStream } from "../controllers/eventStream.js";
 import { FileController } from "../controllers/fileController.js";
 import fileMiddleware from 'express-fileupload';
 import { Healthcheck } from "../controllers/health.js";
 import { isWorker } from "../utils/threading/threadManager.js";
+import { LogController } from "../controllers/logsController.js";
 
 const serverEnv = env.server;
 
@@ -15,7 +16,7 @@ const serverEnv = env.server;
 const apiHost = serverEnv.apiHost.replace(/(^\w+:|^)\/\//, '');
 const webHost = serverEnv.webHost.replace(/(^\w+:|^)\/\//, '');
 
-export const serve = async () => {
+export const serve = async (logger: Logger) => {
 
   const corsHosts = [`http://${apiHost}`, `https://${apiHost}`, `http://${webHost}`, `https://${webHost}`, 'http://localhost'];
   const app = (await Container.get<ExpressApp>(ExpressApp))
@@ -34,8 +35,9 @@ export const serve = async () => {
       parseNested: false
     }))
     .attach(FileController)
-    .attach(EventStream)
+    .attach(new EventStream(logger))
     .attach(Healthcheck)
+    .attach(new LogController(logger))
     .useError(errorMiddleware());
 
   await app.listen(`${serverEnv.port}:${env.server.env == 'development' ? 'loose' : 'force'}`, () => {

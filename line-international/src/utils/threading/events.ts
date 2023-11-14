@@ -1,5 +1,5 @@
 import { EventEmitter } from "../events/index.js";
-import { getCluster, isWorker } from "./threadManager.js";
+import { getCluster, getWorker, isWorker } from "./threadManager.js";
 
 type MessageEvent = {
   type: 'event',
@@ -22,7 +22,7 @@ const createEventManager = () => {
       const message: MessageEvent = {
         type: 'event',
         event,
-        args,
+        args
       };
       process.send(message);
     };
@@ -71,7 +71,11 @@ const createEventManager = () => {
 
     cluster.on('message', (worker, message: MessageEvent) => {
       if (message.type == 'event') {
-        eventEmitter.emit(message.event, ...message.args);
+        originalEmit(message.event, ...message.args);
+        for (const id in cluster.workers) {
+          if (id == worker.id.toString()) continue;
+          cluster.workers[id]?.send(message);
+        }
       }
     });
 

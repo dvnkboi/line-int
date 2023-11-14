@@ -1,6 +1,7 @@
-import { Get, Queue, type QueueType, Res, Stream, globalEvents, Auth, BasicAuth } from '../utils/index.js';
+import { Get, Queue, type QueueType, Res, Stream, globalEvents, Auth, BasicAuth, Controller, Container, Logger, Exception } from '../utils/index.js';
 import { type Response } from 'express';
 import { State } from '../utils/threading/state.js';
+import { eventManager } from '../utils/threading/events.js';
 
 
 type ClientOperation = {
@@ -11,19 +12,16 @@ type ClientOperation = {
   date: Date;
 };
 
-
-
 @Stream('/events')
 export class EventStream {
 
-  constructor () {
+  constructor (private readonly logger: Logger) {
     State.set('operationBacklog', []);
   }
 
   @Get('/audit')
   async get(@Queue() queue: QueueType<any>, @Res() res: Response, @Auth('basic') auth: BasicAuth) {
-    const operationBacklogRaw: ClientOperation[] = await State.get('operationBacklog') ?? [];
-    const operationBacklog: ClientOperation[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
+    const operationBacklog: ClientOperation[] = await State.get('operationBacklog') || [];
 
     const eventId = `event-${auth.username}-${Date.now()}`;
 
@@ -31,9 +29,8 @@ export class EventStream {
       queue.push(operation);
     }
 
-    globalEvents.on(`audit`, async (user: string, operation: string, operationType: ClientOperation['operationType'], file: DiscoveredFile) => {
-      const operationBacklogRaw: ClientOperation[] = await State.get('operationBacklog') ?? [];
-      const operationBacklog: ClientOperation[] = operationBacklogRaw instanceof Array ? operationBacklogRaw : [];
+    eventManager.on(`audit`, async (user: string, operation: string, operationType: ClientOperation['operationType'], file: DiscoveredFile) => {
+      const operationBacklog: ClientOperation[] = await State.get('operationBacklog') || [];
       const clientOperation: ClientOperation = {
         username: user,
         currentOperation: operation,
@@ -43,11 +40,15 @@ export class EventStream {
       };
       queue.push(clientOperation);
       operationBacklog.push(clientOperation);
+      if (operationBacklog.length > 25) {
+        operationBacklog.shift();
+      }
       await State.set('operationBacklog', operationBacklog);
+      await this.logger.info('audit', `User ${user} [${operationType}]  -  ${operation}`);
     }, eventId, true);
 
     res.once('close', () => {
-      globalEvents.off('test', eventId);
+      eventManager.off('audit', eventId);
     });
 
     return queue;

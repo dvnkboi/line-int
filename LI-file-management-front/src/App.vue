@@ -35,6 +35,15 @@
                 class="font-semibold group-hover:-translate-y-1 group-hover:-translate-x-1 group-hover:scale-105 transition-all duration-500">
                 audit
               </h1>
+              <transition name="fade-x" appear>
+                <div @click="openFullLog" v-if="auditModal.isFocusedPremature.value"
+                  class="bg-primary text-primary-foreground px-4 py-1 rounded-xl ring-primary ring-0 hover:ring-2 group hover:-translate-y-1 transition duration-500 absolute top-2 right-2">
+                  <h1
+                    class="pointer-events-auto cursor-pointer font-bold text-xl group-hover:-translate-y-0.5 transition duration-500">
+                    get full log
+                  </h1>
+                </div>
+              </transition>
               <Transition name="fade-x" appear mode="out-in">
                 <h2 v-if="auditModal.isFocusedPremature.value"
                   class="font-bold text-xl opacity-80 mt-2 transition duration-500">
@@ -42,7 +51,7 @@
                 </h2>
               </Transition>
               <Transition name="fade-x" appear>
-                <div class="transition duration-500 flex flex-col justify-start items-start gap-4 px-2 w-full"
+                <div class="transition duration-500 flex flex-col justify-start items-start gap-4 px-2 w-full pb-6"
                   v-if="auditModal.isFocusedPremature.value">
                   <AuditItem v-for="(item, index) in eventLog" :key="index" :item="item">
                   </AuditItem>
@@ -55,8 +64,12 @@
       <transition name="fade-x" appear>
         <div v-if="updatingFiles"
           class="fixed bottom-4 right-4 left-4 flex justify-center items-center z-50 pointer-events-none">
-          <div class="bg-muted text-muted-foreground rounded-2xl shadow-xl px-2 py-2 font-bold">
-            processing {{ progress.toFixed(0) }}%
+          <div class="bg-muted text-muted-foreground rounded-2xl shadow-xl px-2 py-2 font-bold relative overflow-hidden">
+            <h1 class="mix-blend-exclusion bg-blend-exclusion z-50 w-36 relative text-center">processing {{
+              progress.toFixed(0) }}%
+            </h1>
+            <div class="absolute inset-0 bg-primary z-0 transition duration-300 rounded-2xl"
+              :style="[`transform: translateX(${progress - 100}%)`]"></div>
           </div>
         </div>
       </transition>
@@ -76,23 +89,24 @@
         </div>
         <div>
           <input
-            class="bg-input text-muted-foreground rounded-3xl focus:rounded-xl font-semibold ring-0 focus:ring-primary focus:ring-2 ring-primary focus:outline-none outline-none border-none focus:border-none focus:px-4 transition-all duration-500"
+            class="bg-input text-muted-foreground rounded-3xl focus:rounded-xl font-semibold ring-0 focus:ring-primary focus:ring-2 ring-primary focus:outline-none outline-none border-none focus:border-none focus:px-4 transition-all duration-500 w-32 sm:w-52 md:w-72"
             placeholder="search" type="text" v-model="searchInput">
         </div>
-        <img src="./assets/logo.png" class="h-16 w-16 rounded-lg" alt="">
+        <img src="./assets/logo.png" class="h-8 w-8 sm:w-16 sm:h-16 rounded-lg" alt="">
       </div>
       <div ref="folderContainer"
         class="bg-card text-card-foreground shadow-xl rounded-2xl flex justify-start items-start flex-wrap gap-6 flex-row content-start px-6 py-6 w-full transition duration-500 relative">
         <div ref="folderCreationContainer">
           <div ref="folderCreationCard" @click="folderCreationModal.focus()"
             :class="[folderCreationModal.isFocusedPremature.value ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground group cursor-pointer']"
-            class="transition-all duration-500 shadow-xl rounded-2xl px-4 py-4 max-w-md">
+            class="transition-all duration-500 shadow-xl rounded-2xl px-4 py-4 max-w-xs">
             <div class="flex justify-start items-start flex-col gap-1 relative w-full h-full">
-              <h1 class="font-bold text-2xl group-hover:translate-x-3 group-hover:scale-105 transition duration-500">
+              <h1
+                class="font-bold text-xl sm:text-2xl group-hover:translate-x-3 group-hover:scale-105 transition duration-500">
                 Create Folder</h1>
               <Transition name="fade-x" appear mode="out-in">
                 <h2 v-if="!folderCreationModal.isFocusedPremature.value"
-                  class="font-bold text-xl opacity-50 group-hover:translate-x-2 transition duration-500">
+                  class="font-bold text-lg sm:text-xl opacity-50 group-hover:translate-x-2 transition duration-500">
                   Click here to create a folder
                 </h2>
                 <h2 v-else class="font-bold text-xl opacity-80 mt-2 transition duration-500">
@@ -144,67 +158,39 @@
             <div @click="fileInput.click()" class="group-hover:-translate-y-0.5 transition duration-500">Upload</div>
           </button>
         </div>
-        <div v-if="Object.keys(files).length > 0"
+        <div v-if="Object.keys(discoveredFiles).length > 0"
           class="flex justify-start items-start flex-wrap gap-6 flex-row content-start" ref="fileContainer">
-          <TransitionGroup name="list-fade-x" @beforeLeave="listAnimationFix">
-            <div v-for="(file, index) in files" :key="index">
-              <div
-                class="bg-muted text-muted-foreground rounded-2xl pt-2 flex justify-start items-start flex-col gap-2 overflow-hidden group hover:shadow-lg hover:shadow-primary transition-all duration-300 hover:scale-105 cursor-pointer relative"
-                @click="downloadFile(file)">
-                <div
-                  class="absolute left-0 right-0 bottom-0 p-2 z-50 flex justify-center items-center translate-y-4 group-hover:translate-y-0 group-hover:opacity-100 group-hover:pointer-events-auto opacity-0 pointer-events-none transition duration-300">
-                  <div @click.prevent.stop="showDeleteConfirmation(file.filePath, 'file')"
-                    class="bg-destructive text-destructive-foreground px-4 py-1 rounded-xl font-bold ring-destructive ring-0 hover:ring-2 group hover:-translate-y-1 transition duration-500">
-                    <div class="group-hover:-translate-y-0.5 transition duration-500">delete</div>
-                  </div>
-                </div>
-                <h2
-                  class="font-bold text-xl px-4 group-hover:translate-x-2 group-hover:translate-y-1 transition duration-500 origin-top-left group-hover:scale-110">
-                  {{ file.filePath }}
-                </h2>
-                <div v-if="file.type == 'text'"
-                  class="whitespace-pre-line aspect-[16/10] h-72 bg-background text-background-foreground shadow-2xl shadow-black rounded-2xl px-4 py-2 group-hover:scale-90 group-hover:-translate-y-2 transition duration-500">
-                  {{ file.content }}
-                </div>
-                <div v-if="file.type == 'csv'"
-                  class="overflow-auto aspect-[16/10] h-72 bg-background text-background-foreground shadow-2xl shadow-black rounded-2xl px-4 py-2 group-hover:scale-90 group-hover:-translate-y-2 transition duration-500">
-                  <CsvViewer :csvString="file.content" />
-                </div>
-                <img v-if="file.type == 'image'" :src="file.content" :alt="file.type" loading="lazy"
-                  class="aspect-[16/10] object-contain h-72 bg-background text-background-foreground shadow-2xl shadow-black rounded-2xl px-4 py-2 group-hover:scale-90 group-hover:-translate-y-2 transition duration-500">
-              </div>
-            </div>
-          </TransitionGroup>
+          <!-- <TransitionGroup name="list-fade-x" @beforeLeave="listAnimationFix"> -->
+          <File :visible="true" class="visibility-selector" @deleteFile="showDeleteConfirmation(file.filePath, 'file')"
+            :file="file" v-for="(file, index) in discoveredFiles" :key="index" />
+          <!-- </TransitionGroup> -->
         </div>
-        <h1 v-else class="font-bold">No files found 😢</h1>
+        <h1 v-else class="font-bold">No files yet</h1>
       </div>
     </div>
-
   </div>
 </template>
   
 <script setup lang='ts'>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { getFiles, getFilePreview, FilePreviewType, FileArrayResponse, DiscoveredFile, getFile, searchFiles, createFolder, join, deleteFolder, uploadFiles, deleteFile, uploadFilesXHR } from './utils/requests/fileManager';
-import CsvViewer from './components/CsvViewer.vue';
-import { genericAnimation, listAnimationFix } from './utils/theme/index';
-import { useAutoAnimate } from '@formkit/auto-animate/vue';
+import { onMounted, ref, watch } from 'vue';
+import { getFiles, DiscoveredFile, searchFiles, createFolder, join, deleteFolder, deleteFile, uploadFilesXHR, getFullLog } from './utils/requests/fileManager';
+import { listAnimationFix } from './utils/theme/index';
 import { useAnimatedModal } from './composables/useAnimatedModal';
 import { onClickOutside } from '@vueuse/core';
 import { Subscriber } from './utils/events/subscription';
 import { Exception } from './utils/error';
-import AuditItem from './components/auditItem.vue';
+import AuditItem from './components/AuditItem.vue';
+import File from './components/File.vue';
 
 
 const discoveredFiles = ref<{ [filePath: string]: DiscoveredFile; }>({});
 const discoveredFolders = ref<{ [filePath: string]: DiscoveredFile; }>({});
-const files = ref<{ [filePath: string]: FilePreviewType; }>({});
 const currentPath = ref(localStorage.getItem('currentPath') ?? '');
 const isRootPath = ref(false);
 const showingDeleteConfirmationFor = ref('');
-const [appContainer] = useAutoAnimate(genericAnimation());
+// const [appContainer] = useAutoAnimate(genericAnimation());
 // const [folderContainer] = useAutoAnimate(genericAnimation());
-// const [fileContainer] = useAutoAnimate(genericAnimation());
+// const fileContainer = ref<HTMLElement>();
 const searchInput = ref('');
 const folderName = ref('');
 const folderCreationContainer = ref<HTMLElement>();
@@ -244,17 +230,11 @@ watch(searchInput, (input) => {
 onMounted(async () => {
   setTimeout(async () => {
     await listFiles(currentPath.value);
-  }, 100);
+  }, 10);
 });
-
-
-const downloadFile = async (file: FilePreviewType) => {
-  await getFile(file.filePath);
-};
 
 const listFiles = async (dir = '/') => {
   const fileArray = await getFiles(dir);
-  files.value = {};
 
   // convert arr to obj
   discoveredFiles.value = fileArray.files.filter(file => !file.isDirectory).reduce((acc: Record<string, DiscoveredFile>, file) => {
@@ -265,12 +245,6 @@ const listFiles = async (dir = '/') => {
     acc[file.filePath] = file;
     return acc;
   }, {});
-
-  for (const file of Object.values(discoveredFiles.value)) {
-    const preview = await getFilePreview(file.filePath);
-    if (preview.content == null || preview.content.trim() == '') continue;
-    files.value[preview.filePath] = preview;
-  }
 
   localStorage.setItem('currentPath', dir);
   currentPath.value = dir;
@@ -298,7 +272,6 @@ const search = (input: string) => {
       await listFiles(currentPath.value);
       return;
     }
-    files.value = {};
     const searchResults = await searchFiles(input, []);
 
     discoveredFiles.value = searchResults.files.filter(file => !file.item.isDirectory).map(file => file.item).reduce((acc: Record<string, DiscoveredFile>, file) => {
@@ -310,12 +283,6 @@ const search = (input: string) => {
       return acc;
     }, {});
 
-    for (const file of Object.values(discoveredFiles.value)) {
-      const preview = await getFilePreview(file.filePath);
-      if (preview.content == null || preview.content.trim() == '') continue;
-      files.value[preview.filePath] = preview;
-    }
-
   }, 500);
 };
 
@@ -323,6 +290,10 @@ const handleCreateFolderInput = async (event: KeyboardEvent) => {
   if (event.key == 'Enter') {
     await createFolderHandler();
   }
+};
+
+const openFullLog = () => {
+  getFullLog();
 };
 
 const createFolderHandler = async () => {
@@ -341,6 +312,7 @@ const createFolderHandler = async () => {
 };
 
 const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => {
+  console.log(path);
   updatingFiles.value = true;
   if (type == 'folder') {
     const deleteResp = await deleteFolder(path);
@@ -349,6 +321,7 @@ const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => 
       return;
     }
     delete discoveredFolders.value[path];
+    console.log(discoveredFolders.value);
   }
   else {
     const deleteResp = await deleteFile(path);
@@ -357,7 +330,7 @@ const deleteHandler = async (path: string, type: 'folder' | 'file' = 'file') => 
       return;
     }
     delete discoveredFiles.value[path];
-    delete files.value[path];
+    console.log(discoveredFiles.value);
   }
   showingDeleteConfirmationFor.value = '';
   updatingFiles.value = false;
@@ -398,7 +371,7 @@ Subscriber.subscribe('api', 'events:audit');
 Subscriber.on<ClientOperation>('events:audit', async (payload) => {
   const operation = payload.message;
   if (Exception.isException(operation)) return;
-  const alreadyProcessed = eventLog.value.find(item => item.file.filePath == operation.file.filePath && item.operationType == operation.operationType);
+  const alreadyProcessed = eventLog.value.length > 0 ? eventLog.value.find(item => item.currentOperation == operation.currentOperation && item.operationType == operation.operationType) : null;
   if (alreadyProcessed != null) {
     return;
   }
@@ -423,7 +396,6 @@ Subscriber.on<ClientOperation>('events:audit', async (payload) => {
     }
     else if (operation.operationType == 'delete') {
       delete discoveredFiles.value[operation.file.filePath];
-      delete files.value[operation.file.filePath];
     }
     else if (operation.operationType == 'update') {
       discoveredFiles.value[operation.file.filePath] = operation.file;

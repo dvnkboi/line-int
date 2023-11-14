@@ -26,6 +26,9 @@ const loggerWorkers = new Logger().setLogger(...logProviders);
 const logger = await loggerWorkers;
 globalEvents.setLoggers(logger);
 
+logger.limit(Logger.MEGABYTE * 16);
+
+
 runOnPrimary(async () => {
 
   await logger.info('server', 'Creating workers...');
@@ -77,7 +80,7 @@ runOnWorker(async () => {
       await logger.info('initialization', 'Initializing index...');
     },
     async () => await Index.init(),
-    async () => serve(),
+    async () => serve(logger),
     async () => {
       await logger.info('initialization', 'Server started');
     }

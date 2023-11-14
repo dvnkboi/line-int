@@ -2,6 +2,7 @@ import { Controller, Exception, Get, Params, Post, Req, Res, Query, Delete, Put,
 import type { Response, Request } from 'express';
 import { dirname, join } from "path";
 import { type UploadedFile } from 'express-fileupload';
+import { eventManager } from "../utils/threading/events.js";
 
 const fileRootDir = env.server.storagePath;
 
@@ -70,7 +71,7 @@ export class FileController {
 
     Index.add(file);
 
-    globalEvents.emit('audit', basicAuth.username, `Created folder ${folderName}`, 'create', file);
+    eventManager.emit('audit', basicAuth.username, `Created folder ${folderName}`, 'create', file);
 
     return file;
   }
@@ -90,7 +91,7 @@ export class FileController {
 
     Index.delete(file);
 
-    globalEvents.emit('audit', basicAuth.username, `Deleted folder ${folderName}`, 'delete', file);
+    eventManager.emit('audit', basicAuth.username, `Deleted folder ${folderName}`, 'delete', file);
 
     return file;
   }
@@ -115,7 +116,7 @@ export class FileController {
     const fileMimeType = await $getType($join(fileRootDir, fileName));
 
     if (fileMimeType) {
-      globalEvents.emit('audit', basicAuth.username, `Downloaded file ${fileName}`, 'download', null);
+      eventManager.emit('audit', basicAuth.username, `Downloaded file ${fileName}`, 'download', null);
       res.contentType('application/octet-stream');
       res.sendFile(`${fileRootDir}/${fileName}`);
       return;
@@ -149,7 +150,7 @@ export class FileController {
         depth: calculateFileDepth(filePath)
       } as DiscoveredFile;
       processedFiles.push(fileObj);
-      globalEvents.emit('audit', basicAuth.username, `Uploaded file ${fileObj.fileName}`, 'create', fileObj);
+      eventManager.emit('audit', basicAuth.username, `Uploaded file ${fileObj.fileName}`, 'create', fileObj);
     }
 
     Index.add(...processedFiles);
@@ -176,7 +177,7 @@ export class FileController {
     Index.delete(file);
 
 
-    globalEvents.emit('audit', basicAuth.username, `Deleted file ${fileName}`, 'delete', file);
+    eventManager.emit('audit', basicAuth.username, `Deleted file ${fileName}`, 'delete', file);
 
     return file;
   }
@@ -198,7 +199,7 @@ export class FileController {
 
     Index.update(fileName, file);
 
-    globalEvents.emit('audit', basicAuth.username, `Renamed file ${fileName} to ${newName}`, 'update', file);
+    eventManager.emit('audit', basicAuth.username, `Renamed file ${fileName} to ${newName}`, 'update', file);
 
     return file;
   }

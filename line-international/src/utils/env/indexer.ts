@@ -3,7 +3,6 @@ import { Logger } from "../log/index.js";
 import { env } from "./env.js";
 import { createWalker, sanitizePath } from "./path.js";
 import { Container } from "../index.js";
-import { State } from "../threading/state.js";
 import { eventManager } from "../threading/events.js";
 import { getWorker } from "../threading/threadManager.js";
 
@@ -78,7 +77,7 @@ export class Index {
       return [];
     }
 
-    const filteredFiles = filter(this.index, filters);
+    const filteredFiles = filter(this.index, filters).filter((file) => file.fileName != '');
 
     const files = fuzzySearch(searchTerm, filteredFiles, {
       key: 'filePath',

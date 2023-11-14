@@ -174,6 +174,10 @@ export const deleteFile = async (filePath: string): Promise<FileArrayResponse['f
   return data;
 };
 
+export const getFullLog = () => {
+  window.open(`${host}/api/logs/audit`, '_blank');
+};
+
 export const uploadFilesXHR = (path: string, files: FileList, progress: (progress: number) => void = () => { }) => {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
@@ -221,14 +225,11 @@ export const uploadFiles = async (path: string, files: FileList, progress: (prog
 
 export const join = (...args: string[]): string => {
   // make sure args dont start or end with '/'
-  args = args.map(arg => {
-    if (arg.charAt(0) === '/') {
-      arg = arg.substring(1);
-    }
-    if (arg.charAt(arg.length - 1) === '/') {
-      arg = arg.substring(0, arg.length - 1);
-    }
-    return arg;
-  });
-  return args.join('/');
+  let path = args.join('/');
+
+  path = path.replace(/\/\//g, '/');
+  if (path.charAt(0) === '/') path = path.substring(1);
+  if (path.charAt(path.length - 1) === '/') path = path.substring(0, path.length - 1);
+
+  return path;
 };
